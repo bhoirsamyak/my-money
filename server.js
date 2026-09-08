@@ -9,13 +9,31 @@ const app = express();
 app.set('trust proxy', 1);
 app.use(express.json());
 
-const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  port: Number(process.env.DB_PORT || 3306),
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || 'samyak',
-  database: process.env.DB_NAME || 'expense_tracker'
-};
+function getDbConfig() {
+  const urlValue = process.env.DATABASE_URL || process.env.MYSQL_URL;
+
+  if (urlValue) {
+    const u = new URL(urlValue);
+
+    return {
+      host: u.hostname,
+      port: Number(u.port || 3306),
+      user: decodeURIComponent(u.username),
+      password: decodeURIComponent(u.password),
+      database: decodeURIComponent(u.pathname.replace(/^\//, ''))
+    };
+  }
+
+  return {
+    host: process.env.DB_HOST || process.env.MYSQLHOST || 'localhost',
+    port: Number(process.env.DB_PORT || process.env.MYSQLPORT || 3306),
+    user: process.env.DB_USER || process.env.MYSQLUSER || 'root',
+    password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || 'samyak',
+    database: process.env.DB_NAME || process.env.MYSQLDATABASE || 'expense_tracker'
+  };
+}
+
+const dbConfig = getDbConfig();
 
 const sessionStore = new MySQLStore({
   ...dbConfig,
@@ -40,6 +58,12 @@ const pool = mysql.createPool({
 
 
 async function initDb(){
+  async function initDb(){
+  await pool.query(`CREATE TABLE IF NOT EXISTS expenses (id INT PRIMARY KEY AUTO_INCREMENT,user_id INT NULL,amount DECIMAL(10,2) NOT NULL,category VARCHAR(50) NOT NULL,description VARCHAR(255),payment_method VARCHAR(30) NOT NULL,expense_date DATE NOT NULL,expense_time TIME NOT NULL,INDEX idx_expenses_user_date (user_id, expense_date))`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS settings (id INT PRIMARY KEY AUTO_INCREMENT,user_id INT NULL UNIQUE,monthly_income DECIMAL(10,2) NOT NULL DEFAULT 0,savings_target DECIMAL(10,2) NOT NULL DEFAULT 0)`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS users...
   await pool.query(`CREATE TABLE IF NOT EXISTS users (id INT PRIMARY KEY AUTO_INCREMENT,name VARCHAR(100) NOT NULL,email VARCHAR(190) NOT NULL UNIQUE,password_hash VARCHAR(255) NOT NULL,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
   const [ec]=await pool.query(`SELECT COUNT(*) c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='expenses' AND COLUMN_NAME='user_id'`);
   if(!Number(ec[0].c)) await pool.query(`ALTER TABLE expenses ADD COLUMN user_id INT NULL, ADD INDEX idx_expenses_user_date (user_id, expense_date)`);
@@ -52,6 +76,11 @@ async function initDb(){
   if(!Number(fk[0].c)) await pool.query(`ALTER TABLE expenses ADD CONSTRAINT fk_expenses_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE`);
   const [sfk]=await pool.query(`SELECT COUNT(*) c FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='settings' AND COLUMN_NAME='user_id' AND REFERENCED_TABLE_NAME='users'`);
   if(!Number(sfk[0].c)) await pool.query(`ALTER TABLE settings ADD CONSTRAINT fk_settings_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE`);
+  const [sa] = await pool.query(`SELECT EXTRA FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='settings' AND COLUMN_NAME='id' LIMIT 1`);
+
+if (sa.length && !String(sa[0].EXTRA || '').toLowerCase().includes('auto_increment')) {
+  await pool.query(`ALTER TABLE settings MODIFY COLUMN id INT NOT NULL AUTO_INCREMENT`);
+}
 }
 
 function auth(req,res,next){ if(!req.session.userId) return res.status(401).json({error:'Please log in.'}); next(); }
