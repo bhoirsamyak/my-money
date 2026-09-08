@@ -749,21 +749,12 @@ app.use((req, res) =>
 const PORT = Number(process.env.PORT || 3000);
 
 initDb()
-  .then(() =>
-    app.listen(
-      PORT,
-      '0.0.0.0',
-      () => console.log(`My Money running on port ${PORT}`)
-    )
-  )
-  .catch(e => {
+  .then(() => {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`My Money running on port ${PORT}`);
+    });
+  })
+  .catch((e) => {
     console.error('Database initialization failed:', e);
-    process.exit(1);
-  });
-  .catch(e => {
-    console.error(
-      'Database initialization failed:',
-      e
-    );
     process.exit(1);
   });
