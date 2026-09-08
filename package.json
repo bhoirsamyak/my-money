@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "node server.js",
+    "start": "node --check server.js && node server.js",
     "dev": "node server.js"
   },
   "dependencies": {
@@ -12,5 +12,8 @@
     "express-session": "^1.18.2",
     "bcryptjs": "^3.0.2",
     "express-mysql-session": "^3.0.3"
+  },
+  "engines": {
+    "node": "22.x"
   }
 }
