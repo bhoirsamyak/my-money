@@ -752,12 +752,14 @@ initDb()
   .then(() =>
     app.listen(
       PORT,
-      () =>
-        console.log(
-          `My Money running on port ${PORT}`
-        )
+      '0.0.0.0',
+      () => console.log(`My Money running on port ${PORT}`)
     )
   )
+  .catch(e => {
+    console.error('Database initialization failed:', e);
+    process.exit(1);
+  });
   .catch(e => {
     console.error(
       'Database initialization failed:',
